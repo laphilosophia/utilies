@@ -1,0 +1,20 @@
+{
+  "name": "utilies",
+  "version": "0.0.1",
+  "description": "Utilities methods for web app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Erdem Arslan",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laphilosophia/utilies.git"
+  },
+  "bugs": {
+      "url": "https://github.com/laphilosophia/utilies/issues"
+  },
+  "homepage": "https://github.com/laphilosophia/utilies#readme",
+}
