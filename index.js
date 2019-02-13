@@ -405,6 +405,18 @@ export function nextUntil(elem, selector, filter) {
     return siblings
 }
 
+export function getNextSiblings(el, filter) {
+    let siblings = []
+    while (el= el.nextSibling) { if (!filter || filter(el)) siblings.push(el) }
+    return siblings
+}
+
+export function getPreviousSiblings(el, filter) {
+    let siblings = []
+    while (el = el.previousSibling) { if (!filter || filter(el)) siblings.push(el) }
+    return siblings
+}
+
 
 export function isVisible(e) {
     return !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length)
