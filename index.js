@@ -1,10 +1,62 @@
-function throwError(message) {
-    return console.log(message)
+window.$ = $.bind(document)
+window.$$ = $All.bind(document)
+
+Node.prototype.on = window.on = function (name, fn) {
+    this.addEventListener(name, fn)
 }
 
+NodeList.prototype.__proto__ = Array.prototype
 
-export function $(selector) {
-    return document.querySelector(selector)
+NodeList.prototype.on = NodeList.prototype.addEventListener = function (name, fn) {
+    this.forEach(function (elem, i) {
+        elem.on(name, fn)
+    })
+}
+
+if (!Object.prototype.watch) {
+    Object.defineProperty(Object.prototype, 'watch', {
+        enumerable: false,
+        configurable: true,
+        writable: false,
+        value: function (prop, handler) {
+            var
+                oldval = this[prop],
+                newval = oldval,
+                getter = function () {
+                    return newval
+                },
+                setter = function (val) {
+                    oldval = newval
+                    return newval = handler.call(this, prop, oldval, val)
+                }
+
+            if (delete this[prop]) {
+                Object.defineProperty(this, prop, {
+                    get: getter,
+                    set: setter,
+                    enumerable: true,
+                    configurable: true
+                })
+            }
+        }
+    })
+}
+
+if (!Object.prototype.unwatch) {
+    Object.defineProperty(Object.prototype, 'unwatch', {
+        enumerable: false,
+        configurable: true,
+        writable: false,
+        value: function (prop) {
+            var val = this[prop]
+            delete this[prop]
+            this[prop] = val
+        }
+    })
+}
+
+function throwError(message) {
+    return console.log(message)
 }
 
 export function getNode(selector, parent) {
@@ -95,11 +147,11 @@ export function siblings(el, callback) {
     })
 }
 
-export function matches(e, selector) {
-    const allMatches = (e.target.document || e.target.ownerDocument).querySelectorAll(selector)
+export function matches(el, selector) {
+    const allMatches = (el.target.document || el.target.ownerDocument).querySelectorAll(selector)
 
     for (let i = 0; i < allMatches.length; i += 1) {
-        let node = e.target
+        let node = el.target
 
         while (node && node !== document.body) {
             if (node === allMatches[i]) {
@@ -111,6 +163,10 @@ export function matches(e, selector) {
     }
 
     return null
+}
+
+export function contains(str, el) {
+    return !!~str.indexOf(el)
 }
 
 
@@ -138,18 +194,18 @@ export function replaceWith(node, target) {
 }
 
 export function removeElement(el) {
-    if (el) {
-        return el.remove()
-    } else {
+    if (!el) {
         return throwError(`${el} not found in document.`)
     }
+
+    el.remove()
 }
 
 
-export function dynamicEventListener(parent, event, selector, fn) {
-    let element = document.querySelector(parent)
+export function dynamicListener(parent, event, selector, fn) {
+    let element = $(parent)
 
-    element.addEventListener(event, function (event) {
+    element.on(event, function (event) {
         let possibleTargets = element.querySelectorAll(selector)
         let target = event.target
 
@@ -211,7 +267,7 @@ export function cloneNodeWithEvents(oElm, bDeep, bEvents) {
 }
 
 export function detectScrollPosition(element, isEndCallback) {
-    'object' === typeof (element) && element.addEventListener('scroll', () => {
+    'object' === typeof (element) && element.on('scroll', () => {
         if ((element.offsetWidth + element.scrollLeft) === element.scrollWidth) {
             window.requestAnimationFrame(detectScrollPosition)
             return 'function' === typeof (isEndCallback) && isEndCallback(element)
@@ -235,30 +291,24 @@ export function emitEvent(type, elem, detail) {
 }
 
 
-export function observer(element, callback) {
-    const MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver
-    const config = {
+export function observer(element, options, callback) {
+    let MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver
+    let config = options || {
         attributes: true,
-        attributeOldValue: true,
-        childList: true,
-        characterData: true,
-        characterDataOldValue: true,
-        subtree: true
+        attributeFilter: ['class'],
+        attributeOldValue: false,
+        childList: false,
+        characterData: false,
+        characterDataOldValue: false,
+        subtree: false
     }
-    const contents = document.querySelector(element)
-    const observer = new MutationObserver(mutations => {
-        for (let i = 0; i < mutations.length; i++) {
-            if (mutations[i].type === 'attributes') return callback(mutations[i].type)
-            if (mutations[i].type === 'attributeOldValue') return callback(mutations[i].type)
-            if (mutations[i].type === 'childList') return callback(mutations[i].type)
-            if (mutations[i].type === 'characterData') return callback(mutations[i].type)
-            if (mutations[i].type === 'characterDataOldValue') return callback(mutations[i].type)
-            if (mutations[i].type === 'subtree') return callback(mutations[i].type)
-        }
+    let observer = new MutationObserver(mutations => {
+        callback(mutations, element)
     })
 
-    observer.observe(contents, config)
+    observer.observe(element, config)
 }
+
 
 export function buildQuery(data) {
     if (typeof (data) === 'string') return data
@@ -323,6 +373,17 @@ export function getOffsetTop(element) {
     }
 
     return offsetTop
+}
+
+export function getOffsetLeft(element) {
+    let offsetLeft = 0
+
+    while (element) {
+        offsetLeft += element.offsetLeft
+        element = element.offsetParent
+    }
+
+    return offsetLeft
 }
 
 export function childrenMatches(elem, selector) {
@@ -407,13 +468,17 @@ export function nextUntil(elem, selector, filter) {
 
 export function getNextSiblings(el, filter) {
     let siblings = []
-    while (el= el.nextSibling) { if (!filter || filter(el)) siblings.push(el) }
+    while (el = el.nextSibling) {
+        if (!filter || filter(el)) siblings.push(el)
+    }
     return siblings
 }
 
 export function getPreviousSiblings(el, filter) {
     let siblings = []
-    while (el = el.previousSibling) { if (!filter || filter(el)) siblings.push(el) }
+    while (el = el.previousSibling) {
+        if (!filter || filter(el)) siblings.push(el)
+    }
     return siblings
 }
 
@@ -783,6 +848,27 @@ export function switcher(cases) {
     }
 }
 
+export function resizeListener(eventName) {
+    const throttle = (type, name, obj) => {
+        obj = obj || window
+        let running = false
+
+        const func = () => {
+            if (running) return
+            running = true
+
+            requestAnimationFrame(() => {
+                obj.dispatchEvent(new CustomEvent(name))
+                running = false
+            })
+        }
+
+        obj.addEventListener(type, func)
+    }
+
+    return throttle('resize', eventName)
+}
+
 export function responsiveWatch({
     sizes = [],
     orientations = true,
@@ -990,7 +1076,7 @@ export function scrollStop(callback) {
 
     let isScrolling
 
-    window.addEventListener('scroll', event => {
+    window.on('scroll', event => {
         window.clearTimeout(isScrolling)
 
         isScrolling = setTimeout(() => {
@@ -1060,6 +1146,98 @@ export function placeholders(template, data) {
 }
 // https://codepen.io/cferdinandi/pen/ejrEGQ?editors=1010
 
+export function autocomplete(inp, arr) {
+    let currentFocus
+
+    inp.addEventListener('input', function (e) {
+        let a, b, i, val = this.value
+
+        closeAllLists()
+
+        if (!val) return false
+
+        currentFocus = -1
+
+        a = document.createElement('div')
+        a.setAttribute('id', this.id + '-autocomplete-list')
+        a.setAttribute('class', 'app-search--result')
+
+        this.parentNode.appendChild(a)
+
+        for (i = 0; i < arr.length; i++) {
+            let title = arr[i].title
+            let href = title.split(' ').join('-')
+
+            if (title.substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+                b = document.createElement('a')
+
+                b.setAttribute('href', `#${href}`)
+                b.innerHTML = `<strong>${title.substr(0, val.length)}</strong>`
+                b.innerHTML += title.substr(val.length);
+                b.innerHTML += `<input type='hidden' value='${title}'>`
+
+                b.addEventListener('click', function (e) {
+                    e.preventDefault()
+                    inp.value = this.getElementsByTagName('input')[0].value
+                    closeAllLists()
+                })
+
+                a.appendChild(b)
+            }
+        }
+    })
+
+    inp.addEventListener('keydown', function (e) {
+        let x = document.getElementById(this.id + '-autocomplete-list')
+
+        if (x) x = x.getElementsByTagName('a')
+
+        if (e.keyCode == 40) {
+            currentFocus++
+            addActive(x)
+        } else if (e.keyCode == 38) {
+            currentFocus--
+            addActive(x)
+        } else if (e.keyCode == 13) {
+            e.preventDefault()
+            if (currentFocus > -1) {
+                if (x) x[currentFocus].click()
+            }
+        }
+    })
+
+    function addActive(x) {
+        if (!x) return false
+
+        removeActive(x)
+
+        if (currentFocus >= x.length) currentFocus = 0
+        if (currentFocus < 0) currentFocus = (x.length - 1)
+
+        x[currentFocus].classList.add('autocomplete-active')
+    }
+
+    function removeActive(x) {
+        for (let i = 0; i < x.length; i++) {
+            x[i].classList.remove('autocomplete-active')
+        }
+    }
+
+    function closeAllLists(elmnt) {
+        let x = document.getElementsByClassName('app-search--result')
+
+        for (let i = 0; i < x.length; i++) {
+            if (elmnt != x[i] && elmnt != inp) {
+                x[i].parentNode.removeChild(x[i])
+            }
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        closeAllLists(e.target)
+    })
+}
+
 export function ready(fn) {
     if (typeof fn !== 'function') return
 
@@ -1067,8 +1245,100 @@ export function ready(fn) {
         return fn()
     }
 
-    document.addEventListener('DOMContentLoaded', fn, false)
+    document.on('DOMContentLoaded', fn, false)
 }
+
+export function connect (route) {
+    const get = endpoint => {
+        return fetch(`${route}/${endpoint}`)
+    }
+
+    const post = (endpoint, params) => {
+        return fetch(`${route}/${endpoint}`, {
+            method: 'POST',
+            body: JSON.stringify(params),
+            headers: {
+                'Content-type': 'application/json; charset=UTF-8'
+            }
+        })
+    }
+
+    return {
+        get,
+        post
+    }
+}
+
+export function scrollFix(options) {
+    let defaults = {
+        element: '',
+        className: ''
+    }
+
+    let settings = Object.assign({}, defaults, options)
+
+    try {
+        let header = $(settings.element)
+
+        if (typeof header !== 'undefined' && header !== null) {
+            let height = header.offsetTop + header.offsetHeight
+
+            window.onscroll = () => {
+                if (window.pageYOffset > height) {
+                    header.classList.add(settings.className)
+                } else {
+                    header.classList.remove(settings.className)
+                }
+            }
+        } else {
+            throwError(header, 'undefined or null')
+        }
+    } catch (error) {
+        throwError(error)
+    }
+}
+
+export function simpleTab(element, activeClass) {
+    if (!$(element)) return
+
+    $(element).on('click', onTabClick, false)
+
+    function onTabClick(event) {
+        event.preventDefault()
+
+        let parent = event.target.parentElement
+        let hash = event.target.href.split('#')[1]
+
+        replaceClassName(parent, activeClass)
+        replaceClassName(document.getElementById(hash), activeClass)
+    }
+
+    function replaceClassName (element, className) {
+        addClass(element, className)
+        siblings(element, _self => {
+            removeClass(_self, className)
+        })
+    }
+}
+
+export function activeByPage (menu, activeClass) {
+    let navMenu = $(menu) || throwError(menu, 'not defined')
+    
+    if (!navMenu) return
+
+    let menuitems = navMenu.children
+
+    for (const key in menuitems) {
+        if (menuitems.hasOwnProperty(key)) {
+            const item = menuitems[key]
+
+            if (item.href === location.href) {
+                item.className = activeClass
+            }
+        }
+    }
+}
+
 
 export function truncate(elem, limit, after) {
     if (!elem || !limit) return
