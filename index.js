@@ -1348,3 +1348,26 @@ export function truncate(elem, limit, after) {
     content = content.join(' ') + (after ? after : '')
     elem.textContent = content
 }
+
+export function memoize(fn) {
+    const cache = new Map()
+
+    return value => {
+        const cachedResult = cache.get(value)
+
+        if (cachedResult !== undefined) return cachedResult
+
+        const result = fn(value)
+        cache.set(value, result)
+
+        return result
+    }
+}
+
+export function shank(arr, index = 0, delCount = 0, ...elements) {
+    return arr.slice(0, index).concat(elements).concat(arr.slice(index + delCount))
+}
+
+export function objectFromPairs (arr) {
+    return arr.reduce((a, [key, val]) => ((a[key] = val), a), {})
+}
