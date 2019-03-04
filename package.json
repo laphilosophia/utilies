@@ -1,6 +1,6 @@
 {
   "name": "utilies",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Utilities methods for web app",
   "main": "index.js",
   "scripts": {
@@ -14,7 +14,7 @@
     "url": "git+https://github.com/laphilosophia/utilies.git"
   },
   "bugs": {
-      "url": "https://github.com/laphilosophia/utilies/issues"
+    "url": "https://github.com/laphilosophia/utilies/issues"
   },
   "homepage": "https://github.com/laphilosophia/utilies#readme"
 }
