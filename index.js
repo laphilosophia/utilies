@@ -292,21 +292,20 @@ export function emitEvent(type, elem, detail) {
 
 
 export function observer(element, options, callback) {
-    let MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver
-    let config = options || {
-        attributes: true,
-        attributeFilter: ['class'],
-        attributeOldValue: false,
-        childList: false,
-        characterData: false,
-        characterDataOldValue: false,
-        subtree: false
-    }
-    let observer = new MutationObserver(mutations => {
-        callback(mutations, element)
-    })
-
-    observer.observe(element, config)
+    const observer = new MutationObserver(mutations => mutations.forEach(mutation => callback(mutation)))
+    observer.observe(
+        element,
+        Object.assign({
+            childList: true,
+            attributes: true,
+            attributeOldValue: true,
+            attributeFilter: ['class'],
+            characterData: true,
+            characterDataOldValue: true,
+            subtree: true
+        }, options)
+    )
+    return observer
 }
 
 
