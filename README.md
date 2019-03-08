@@ -103,8 +103,9 @@ Utilities for every web app needed
 ````
 
 ````js
-    observer(element, options, callback)
-    // (getNode('.el'), { attributeFilter: ['data-target'] }, (mutations, element) => { ... })
+    const obs = observer(element, options, console.log) // Logs all mutations that happen on the page
+    obs.disconnect()
+    // (getNode('.el'), { attributeFilter: ['data-target'] }, (mutation) => { ... })
 ````
 
 ````js
